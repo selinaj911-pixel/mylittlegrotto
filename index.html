@@ -169,15 +169,39 @@
     }
 
     // --- 雷劫与奇遇 (手动补充回来的功能) ---
-    function addDeadlinePrompt(topic) {
-        const content = document.getElementById('in-'+topic).value || "未命名雷劫";
-        const date = prompt("请定下雷劫期限 (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
-        if (date) {
-            state.deadlines.push({ id: Date.now(), content, topic, due: date, done: false });
-            document.getElementById('in-'+topic).value = '';
-            save(); renderUI();
+function addDeadlinePrompt(topic) {
+    const inputEl = document.getElementById('in-' + topic);
+    const content = inputEl.value.replace(/#\S+/, '').trim() || "未命名雷劫";
+    
+    // 获取标签（如果有的话）
+    const tagMatch = inputEl.value.match(/#(破局|掌控|辨析|道心)/);
+    const tag = tagMatch ? tagMatch[1] : null;
+
+    // 弹出日期选择
+    const date = prompt("请定下雷劫降临的具体日期 (格式: YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
+    
+    if (date) {
+        // 校验日期格式是否合法
+        if (isNaN(new Date(date).getTime())) {
+            alert("日期格式有误，法力无法凝结。");
+            return;
         }
+        
+        state.deadlines.push({ 
+            id: Date.now(), 
+            content: content, 
+            topic: topic, 
+            tag: tag, // 保留能力标签
+            due: date, 
+            done: false 
+        });
+        
+        inputEl.value = ''; // 清空输入框
+        save(); 
+        renderUI();
+        showModal("⚡ 雷劫已定", `【${content}】\n将于 ${date} 降临，请道友速速准备！`);
     }
+}
 
     function addAdventurePrompt(topic) {
         const content = document.getElementById('in-'+topic).value || "未命名奇遇";
@@ -275,14 +299,34 @@ function updateHobbyDisplay() {
                 `).join('');
         });
 
-        // 渲染雷劫
-        document.getElementById('deadline-list').innerHTML = state.deadlines.filter(d => !d.done).map(d => {
-            const diff = Math.ceil((new Date(d.due) - new Date()) / 86400000);
-            return `<div style="margin-bottom:6px; border-bottom:1px dashed #ccc;">
-                <b>[${d.topic}]</b> ${d.content} <span style="color:var(--crimson); font-weight:bold;">(${diff}日)</span>
-                <button onclick="completeTask(${d.id}, 'dead')" style="float:right; font-size:0.6rem;">了结</button>
-            </div>`;
-        }).join('') || '云淡风轻。';
+// 渲染雷劫（带智能倒计时）
+document.getElementById('deadline-list').innerHTML = state.deadlines.filter(d => !d.done).map(d => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // 归零时分秒，仅对比日期
+    const targetDate = new Date(d.due);
+    const diffTime = targetDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // 计算天数
+
+    // 根据紧急程度设置颜色
+    let color = "#666"; // 默认
+    let warning = "";
+    if (diffDays <= 0) { color = "var(--crimson)"; warning = " [渡劫中!]"; }
+    else if (diffDays <= 3) { color = "#ff8c00"; warning = " [紧迫]"; }
+    else { color = "var(--teal)"; }
+
+    return `
+        <div style="margin-bottom:8px; padding:6px; border-bottom:1px dashed #ccc; color:${color};">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <b style="font-size:0.8rem;">[${d.topic}] ${d.content}</b>
+                <button onclick="completeTask(${d.id}, 'dead')" style="font-size:0.6rem; cursor:pointer;">了结</button>
+            </div>
+            <div style="font-size:0.7rem; opacity:0.8; margin-top:2px;">
+                期限: ${d.due} | 剩余: <span style="font-weight:bold;">${diffDays}</span> 日${warning}
+                ${d.tag ? `<span style="float:right; font-style:italic;">#${d.tag}</span>` : ''}
+            </div>
+        </div>
+    `;
+}).join('') || '<div style="opacity:0.5; font-size:0.7rem;">云淡风轻，暂无雷劫压顶。</div>';
 
         // 渲染奇遇
         document.getElementById('adventure-list').innerHTML = state.adventures.slice(-3).map(a => `
@@ -315,3 +359,4 @@ function updateHobbyDisplay() {
 </script>
 </body>
 </html>
+
