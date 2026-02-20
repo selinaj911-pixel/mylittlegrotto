@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>灵境·天机自守录 (因果圆满版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --ink: #2c3e50; --paper: #f4f1de; --lamp-glow: #e6b422;
+            --crimson: #a0522d; --teal: #4a6572; --border: rgba(44, 62, 80, 0.15);
+            --gold: #d4af37;
+        }
+
+        body {
+            background-color: var(--paper); background-image: url('https://www.transparenttextures.com/patterns/natural-paper.png');
+            color: var(--ink); font-family: "STSong", "KaiTi", serif; margin: 0; padding: 20px;
+        }
+
+        .dashboard { display: grid; grid-template-columns: 350px 1fr; gap: 20px; max-width: 1400px; margin: auto; }
+        .sidebar { position: sticky; top: 20px; }
+        .card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); border-radius: 12px; border: 1px solid var(--border); padding: 18px; margin-bottom: 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+
+        /* 状态汇总栏 */
+        .status-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .mini-board { padding: 12px; border-radius: 12px; border: 2px solid var(--border); background: rgba(255,255,255,0.4); min-height: 120px; }
+        .mini-title { font-weight: bold; font-size: 0.9rem; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+        
+        /* 境界与番茄钟 */
+        .realm-info { text-align: center; }
+        .realm-title { font-size: 1.3rem; font-weight: bold; color: var(--crimson); }
+        .exp-container { width: 100%; background: rgba(0,0,0,0.05); height: 8px; border-radius: 4px; margin: 10px 0; overflow: hidden; border: 1px solid #ddd; }
+        #exp-bar { height: 100%; background: linear-gradient(90deg, var(--teal), var(--lamp-glow)); width: 0%; transition: 1s; }
+        .timer-display { font-family: monospace; font-size: 2.5rem; color: var(--crimson); font-weight: bold; text-align: center; }
+
+        /* 任务列表 */
+        .board-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
+        .topic-card { min-height: 420px; display: flex; flex-direction: column; }
+        .topic-header { font-weight: bold; border-bottom: 2px solid var(--ink); padding-bottom: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .task-list { flex: 1; overflow-y: auto; max-height: 250px; }
+        
+        .task-item { background: rgba(255,255,255,0.4); padding: 8px; border-radius: 6px; margin-bottom: 6px; border: 1px solid transparent; font-size: 0.85rem; display: flex; align-items: center; }
+        .check-box { width: 16px; height: 16px; margin-right: 10px; cursor: pointer; }
+        
+        .tag-label { font-size: 0.65rem; padding: 2px 5px; border-radius: 4px; margin-left: auto; background: var(--border); }
+        .tag-破局 { background: #e8f5e9; color: #2e7d32; }
+        .tag-掌控 { background: #e3f2fd; color: #1565c0; }
+        .tag-辨析 { background: #fff3e0; color: #ef6c00; }
+        .tag-道心 { background: #f3e5f5; color: #7b1fa2; }
+
+        /* 输入与交互 */
+        .input-box { margin-top: auto; padding-top: 10px; }
+        .input-box input { width: 100%; box-sizing: border-box; padding: 8px; margin-bottom: 5px; border: 1px solid var(--ink); border-radius: 4px; font-size: 0.8rem; }
+        .btn-row { display: flex; gap: 4px; }
+        .small-btn { flex: 1; font-size: 0.65rem; padding: 4px; cursor: pointer; border: 1px solid var(--ink); background: white; border-radius: 4px; }
+        .small-btn:hover { background: var(--border); }
+
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; z-index: 1000; justify-content: center; align-items: center; }
+        .modal { background: var(--paper); padding: 25px; border-radius: 12px; max-width: 450px; border-left: 8px solid var(--lamp-glow); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="sidebar">
+        <div class="card realm-info">
+            <div id="quote-display" style="font-size: 0.8rem; font-style: italic; margin-bottom: 12px; color:var(--crimson);">“岁寒，然后知松柏之后凋也。”</div>
+            <div class="realm-title" id="realm-display">载入中...</div>
+            <div class="exp-container"><div id="exp-bar"></div></div>
+            <div id="hobby-status-box" style="margin-top: 15px; padding: 10px; background: rgba(74, 101, 114, 0.1); border-radius: 8px;">
+                <div style="font-size: 0.7rem; color: var(--teal); font-weight: bold; margin-bottom: 5px;">🍃 红尘雅兴进度</div>
+                 <div style="width: 100%; background: rgba(0,0,0,0.05); height: 6px; border-radius: 3px; overflow: hidden;">
+                    <div id="hobby-bar" style="height: 100%; background: var(--teal); width: 0%; transition: 0.5s;"></div>
+                </div>
+                <div id="hobby-text" style="font-size: 0.6rem; margin-top: 4px; color: #666;">积攒雅兴以触发轶事 (0/5)</div>
+            </div>
+            <button onclick="showWeeklySummary()" style="margin-top:10px; width:100%; cursor:pointer; background:var(--ink); color:white; border:none; padding:8px; border-radius:4px;">📖 查阅七日批文</button>
+        </div>
+
+        <div class="card" style="height: 280px;"><canvas id="radarChart"></canvas></div>
+
+        <div class="card">
+            <div style="font-weight:bold; text-align:center; font-size:0.9rem;">⌛ 周天入定</div>
+            <div class="timer-display" id="timer-display">25:00</div>
+            <button onclick="toggleTimer()" id="timer-btn" style="width:100%; background:var(--ink); color:white; border:none; padding:10px; border-radius:4px; cursor:pointer;">开启入定</button>
+            <div style="text-align:center; font-size:0.65rem; margin-top:8px; opacity:0.6;">圆满即获一次机缘奇遇</div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="status-container">
+            <div class="mini-board" style="border-color: var(--crimson);">
+                <div class="mini-title" style="color:var(--crimson);">⚡ 近期雷劫 (Deadlines)</div>
+                <div id="deadline-list" style="font-size:0.75rem;"></div>
+            </div>
+            <div class="mini-board" style="border-color: var(--gold);">
+                <div class="mini-title" style="color:var(--gold);">✨ 仙境奇遇 (Milestones)</div>
+                <div id="adventure-list" style="font-size:0.75rem;"></div>
+            </div>
+        </div>
+
+        <div class="board-container">
+            <div class="card topic-card">
+                <div class="topic-header">📜 研究学习 (Research)</div>
+                <div class="task-list" id="list-研究"></div>
+                <div class="input-box">
+                    <input type="text" id="in-研究" onkeypress="handleEnter(event, '研究')" placeholder="输入内容 #标签...">
+                    <div class="btn-row">
+                        <button class="small-btn" onclick="addDeadlinePrompt('研究')">⚡雷劫</button>
+                        <button class="small-btn" onclick="addAdventurePrompt('研究')">✨奇遇</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card topic-card">
+                <div class="topic-header">🤝 育人工作 (Teaching)</div>
+                <div class="task-list" id="list-育人"></div>
+                <div class="input-box">
+                    <input type="text" id="in-育人" onkeypress="handleEnter(event, '育人')" placeholder="事务 #道心...">
+                    <div class="btn-row">
+                        <button class="small-btn" onclick="addDeadlinePrompt('育人')">⚡雷劫</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card topic-card"><div class="topic-header">⚔️ 金身自持 (运动)</div><div class="task-list" id="list-运动"></div><div class="input-box"><input type="text" id="in-运动" onkeypress="handleEnter(event, '运动')"></div></div>
+            <div class="card topic-card"><div class="topic-header">💎 琢玉逸致 (手工)</div><div class="task-list" id="list-手工"></div><div class="input-box"><input type="text" id="in-手工" onkeypress="handleEnter(event, '手工')"></div></div>
+            <div class="card topic-card"><div class="topic-header">🇰🇷 异域神识 (韩语)</div><div class="task-list" id="list-韩语"></div><div class="input-box"><input type="text" id="in-韩语" onkeypress="handleEnter(event, '韩语')"></div></div>
+        </div>
+    </div>
+</div>
+
+<div class="overlay" id="overlay">
+    <div class="modal"><div id="modal-title" style="font-weight:bold; color:var(--crimson);"></div><div id="modal-content" style="margin-top:12px; white-space: pre-wrap;"></div><button onclick="closeModal()" style="margin-top:15px; width:100%; cursor:pointer; background:var(--ink); color:white; border:none; padding:8px; border-radius:4px;">收功</button></div>
+</div>
+
+<script>
+    const START_VAL = 5.4, NEED_EXP = 2800;
+    const timerAdventures = ["定中神游，悟出算法精髓。","识海清明，破局感悟+1。","韩语语感在入定中悄然苏醒。","TA工作的烦躁在定中化为慈悲。"];
+    const hobbyStories = [
+    "你在运动后擦汗时，突然觉得识海一阵清凉，仿佛看到了论文的逻辑漏洞。",
+    "完成手工的瞬间，你发现专注力竟然可以如此凝练，这种感觉很适合去推导公式。",
+    "当你念准那个韩语发音时，偶然路过的猫似乎听懂了你的‘안녕하세요’。",
+    "在拉伸身体时，你悟到了：身体的柔韧性与代码的解耦其实是一个道理。",
+    "今日做完手工，看着眼前的造物，你突然对‘结构化思维’有了具象的理解。",
+    "韩语听力练习中，你捕捉到了一个高频词，这让你对异域文化的理解又深了一层。"
+    ];
+
+    let state = JSON.parse(localStorage.getItem('dao_pc_v11')) || {
+        overall: START_VAL, totalExp: 0,
+        attributes: { "破局": 6.5, "掌控": 5.0, "道心": 4.0, "辨析": 4.0 },
+        tasks: [], deadlines: [], adventures: [], weeklyLogs: []
+    };
+
+    let myChart, timerInterval, timeLeft = 1500, isRunning = false;
+
+    function save() { localStorage.setItem('dao_pc_v11', JSON.stringify(state)); }
+
+    // --- 核心录入系统 ---
+    function handleEnter(e, topic) {
+        if (e.key === 'Enter') {
+            const val = e.target.value;
+            if (!val) return;
+            const tagMatch = val.match(/#(破局|掌控|辨析|道心)/);
+            const tag = tagMatch ? tagMatch[1] : null;
+            const content = val.replace(/#\S+/, '').trim();
+            state.tasks.push({ id: Date.now(), content, topic, tag, done: false });
+            e.target.value = ''; save(); renderUI();
+        }
+    }
+
+    // --- 雷劫与奇遇 (手动补充回来的功能) ---
+    function addDeadlinePrompt(topic) {
+        const content = document.getElementById('in-'+topic).value || "未命名雷劫";
+        const date = prompt("请定下雷劫期限 (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
+        if (date) {
+            state.deadlines.push({ id: Date.now(), content, topic, due: date, done: false });
+            document.getElementById('in-'+topic).value = '';
+            save(); renderUI();
+        }
+    }
+
+    function addAdventurePrompt(topic) {
+        const content = document.getElementById('in-'+topic).value || "未命名奇遇";
+        const type = prompt("请输入奇遇类型 (如: Paper Submission/Workshop):", "Paper Submission");
+        if (type) {
+            state.adventures.push({ id: Date.now(), content, type, topic });
+            state.weeklyLogs.push({ date: new Date().toLocaleDateString(), type: "仙境奇遇", content: `【${type}】${content}` });
+            document.getElementById('in-'+topic).value = '';
+            save(); renderUI();
+            showModal("✨ 仙境奇遇", `机缘已记入批文：\n${content}`);
+        }
+    }
+
+function completeTask(id, type = 'task') {
+    const list = type === 'task' ? state.tasks : state.deadlines;
+    const item = list.find(t => t.id === id);
+    if (!item) return;
+
+    item.done = true;
+
+    // 核心逻辑判断
+    if (["研究", "育人"].includes(item.topic)) {
+        // 核心板块：增加修为和雷达图属性
+        const exp = (type === 'dead' ? 30 : 5);
+        state.totalExp += exp;
+        if (item.tag) {
+            state.attributes[item.tag] = Math.min(10, state.attributes[item.tag] + 0.05);
+        }
+        state.overall = START_VAL + (state.totalExp / 1000);
+        showModal("【因果了结】", `${item.content}\n修为精进，属性已升。`);
+    } else {
+        // 雅兴板块：运动、手工、韩语
+        state.hobbyPoints = (state.hobbyPoints || 0) + 1;
+        
+        if (state.hobbyPoints >= 5) {
+            state.hobbyPoints = 0; // 满5次重置
+            const story = hobbyStories[Math.floor(Math.random() * hobbyStories.length)];
+            showModal("🍃 雅兴轶事", story);
+            // 轶事也记入批文
+            state.weeklyLogs.push({ date: new Date().toLocaleDateString(), type: "雅兴感悟", content: story });
+        } else {
+            showModal("☕ 闲情雅致", `已结了“${item.content}”。\n当前雅兴积攒：${state.hobbyPoints}/5`);
+        }
+    }
+
+    save();
+    renderUI();
+    updateHobbyDisplay();
+}
+
+// 同时别忘了在 renderUI() 函数中增加进度条的更新：
+function updateHobbyDisplay() {
+    const percent = (state.hobbyPoints / 5) * 100;
+    document.getElementById('hobby-bar').style.width = percent + "%";
+    document.getElementById('hobby-text').innerText = `积攒雅兴以触发轶事 (${state.hobbyPoints}/5)`;
+}
+// 请在 renderUI() 的最后一行加入：updateHobbyDisplay();
+
+    // --- 番茄钟 ---
+    function toggleTimer() {
+        const btn = document.getElementById('timer-btn');
+        if (!isRunning) {
+            isRunning = true; btn.innerText = "中止";
+            timerInterval = setInterval(() => {
+                timeLeft--; updateTimerDisplay();
+                if (timeLeft <= 0) finishTimer();
+            }, 1000);
+        } else {
+            clearInterval(timerInterval); isRunning = false; btn.innerText = "开启入定";
+        }
+    }
+    function updateTimerDisplay() {
+        const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+        document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' + s : s}`;
+    }
+    function finishTimer() {
+        clearInterval(timerInterval); isRunning = false; timeLeft = 1500;
+        updateTimerDisplay(); document.getElementById('timer-btn').innerText = "开启入定";
+        const adv = timerAdventures[Math.floor(Math.random()*timerAdventures.length)];
+        state.weeklyLogs.push({ date: new Date().toLocaleDateString(), type: "入定奇遇", content: adv });
+        save(); renderUI(); showModal("🧘‍♂️ 周天圆满", adv);
+    }
+
+    // --- 渲染 ---
+    function renderUI() {
+        const topics = ["研究", "育人", "运动", "手工", "韩语"];
+        topics.forEach(t => {
+            document.getElementById('list-' + t).innerHTML = state.tasks.filter(tk => !tk.done && tk.topic === t)
+                .map(tk => `
+                    <div class="task-item">
+                        <input type="checkbox" class="check-box" onclick="completeTask(${tk.id})">
+                        <span>${tk.content}</span>
+                        ${tk.tag ? `<span class="tag-label tag-${tk.tag}">${tk.tag}</span>` : ''}
+                    </div>
+                `).join('');
+        });
+
+        // 渲染雷劫
+        document.getElementById('deadline-list').innerHTML = state.deadlines.filter(d => !d.done).map(d => {
+            const diff = Math.ceil((new Date(d.due) - new Date()) / 86400000);
+            return `<div style="margin-bottom:6px; border-bottom:1px dashed #ccc;">
+                <b>[${d.topic}]</b> ${d.content} <span style="color:var(--crimson); font-weight:bold;">(${diff}日)</span>
+                <button onclick="completeTask(${d.id}, 'dead')" style="float:right; font-size:0.6rem;">了结</button>
+            </div>`;
+        }).join('') || '云淡风轻。';
+
+        // 渲染奇遇
+        document.getElementById('adventure-list').innerHTML = state.adventures.slice(-3).map(a => `
+            <div style="margin-bottom:4px;"><b>#${a.type}</b>: ${a.content}</div>
+        `).join('') || '待觅机缘。';
+
+        document.getElementById('realm-display').innerText = `${getRealm(state.overall)} (${state.overall.toFixed(3)})`;
+        document.getElementById('exp-bar').style.width = Math.min(100, (state.totalExp/NEED_EXP)*100) + "%";
+        if(!myChart) initChart(); else updateChart();
+    }
+
+    function showWeeklySummary() {
+        const logs = state.weeklyLogs.slice(-15).reverse().map(l => `【${l.date}】${l.type}\n${l.content}`).join('\n\n---\n\n');
+        showModal("📖 七日修行批文", logs || "识海空空，尚无奇遇记录。");
+    }
+
+    function initChart() {
+        const ctx = document.getElementById('radarChart').getContext('2d');
+        myChart = new Chart(ctx, {
+            type: 'radar',
+            data: { labels: ["破局", "掌控", "道心", "辨析"], datasets: [{ data: [6.5, 5, 4, 4], backgroundColor: 'rgba(160, 82, 45, 0.2)', borderColor: '#a0522d', borderWidth: 2 }] },
+            options: { scales: { r: { min: 2, max: 10, ticks: { display: false } } }, plugins: { legend: { display: false } }, maintainAspectRatio: false }
+        });
+    }
+    function updateChart() { myChart.data.datasets[0].data = ["破局", "掌控", "道心", "辨析"].map(l => state.attributes[l]); myChart.update(); }
+    function getRealm(v) { return v < 6.0 ? "筑基后期" : (v < 7.5 ? "半步金丹" : "准博士圆满"); }
+    function showModal(t, c) { document.getElementById('modal-title').innerText = t; document.getElementById('modal-content').innerText = c; document.getElementById('overlay').style.display = 'flex'; }
+    function closeModal() { document.getElementById('overlay').style.display = 'none'; }
+    window.onload = renderUI;
+</script>
+</body>
+</html>
